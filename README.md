@@ -4,6 +4,8 @@ A collection of Jupyter notebooks explaining various machine learning concepts a
 
 ## Notebooks
 
+### Section 1: just intro of Machine Learning & Data Science... not included here
+
 ### Section 2: Linear Regression
 
 *   **`Section-2/movie_revenue.ipynb`**: Performs linear regression on movie revenue data using pandas, matplotlib, and scikit-learn. It reads a CSV, plots the data, applies a linear regression model, and evaluates it.
