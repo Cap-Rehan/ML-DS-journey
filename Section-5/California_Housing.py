@@ -22,6 +22,8 @@ import pandas as pd
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 import matplotlib.pyplot as plt
 # %matplotlib inline
@@ -326,8 +328,7 @@ plt.show()
 
 # %%
 plt.figure(figsize=(16, 10))
-sns.histplot(housing_data["AveRooms"], kde= True,
-             color="#008080")  # teal
+sns.histplot(housing_data["AveRooms"], kde= True, color="#008080")  # teal
 plt.xlabel("Average number of rooms")
 plt.ylabel("No. of houses")
 plt.xlim(0, 15)
@@ -362,9 +363,6 @@ print(housing_data["AveRooms"].max())
 # **Summary:**
 #
 # Seaborn builds on matplotlib, offering easier syntax and attractive defaults like adding PDFs to histograms. By exploring the RM feature, we see Boston homes average about 6.28 rooms. Together, visualizations and summary statistics help confirm insights about dataset features, preparing us for deeper analysis.
-
-# %% [markdown]
-#
 
 # %%
 housing_data.head()
@@ -644,11 +642,9 @@ plt.show()
 #
 # Example findings in Boston data:
 #
-# - NOX & INDUS have strong positive correlation (~0.76) — more industry → more pollution (makes sense).
+# - AveRooms & AveBedrms have strong positive correlation (~0.85) — makes sense.
 #
-# - TAX & RAD showed very high correlation (~0.91) — suspiciously high; investigate units/meaning before trusting it.
-#
-# - DIS & INDUS: strong negative correlation (~-0.71) — distance from employment centers is related to industry concentration.
+# - Latitude & Longitude: strong negative correlation (~-0.92) — location-based relationship.
 #
 # Caveats / limitations to keep in mind:
 #
@@ -691,9 +687,9 @@ plt.show()
 # ### 2. Matplotlib scatter (basic → polished)
 
 # %%
-plt.figure(figsize=(9,6))
-plt.style.use('fivethirtyeight')
-plt.scatter(housing_data["Longitude"], housing_data["Latitude"], s=80, alpha=0.6, color="indigo")
+plt.figure(figsize=(12,8))
+plt.style.use('classic')
+plt.scatter(housing_data["Longitude"], housing_data["Latitude"], s=80, alpha=0.4, color="indigo")
 plt.xlabel("Longitude", fontsize=14)
 plt.ylabel("Latitude", fontsize=14)
 plt.title(f"Longitude vs Latitude (Correlation = {round(housing_data['Longitude'].corr(housing_data['Latitude']), 2)})", fontsize=14)
@@ -708,7 +704,7 @@ plt.show()
 # plt.figure(figsize=(10,6)) not working here, use height
 sns.set_context("talk")
 
-sns.jointplot(x=housing_data["Longitude"], y=housing_data["Latitude"], height= 9, color="darkblue", joint_kws={"alpha":0.6})
+sns.jointplot(x=housing_data["Longitude"], y=housing_data["Latitude"], height= 10,color="darkblue", joint_kws={"alpha":0.6})
 
 plt.show()
 
@@ -723,7 +719,7 @@ plt.show()
 
 # %%
 sns.set_context("talk")
-sns.jointplot(x=housing_data["Longitude"], y=housing_data["Latitude"], height= 11, kind='reg', color='indigo')
+sns.jointplot(x=housing_data["AveRooms"], y=housing_data["AveBedrms"], height= 11, kind='reg', color='indigo')
 
 plt.show()
 
@@ -766,35 +762,54 @@ plt.show()
 
 # %%
 plt.figure(figsize=(16,10))
-corr_val= round(housing_data["Longitude"].corr(housing_data["Latitude"]), 2)
+corr_val= round(housing_data["MedInc"].corr(housing_data["House Price"]), 2)
 
-plt.scatter(housing_data["Longitude"], housing_data["Latitude"], s=80, alpha=0.6, color="steelblue")
-plt.xlabel("Longitude", fontsize=14)
-plt.ylabel("Latitude", fontsize=14)
-plt.title(f"Longitude vs Latitude (Correlation = {corr_val, 2})", fontsize=16)
+plt.scatter(housing_data["MedInc"], housing_data["House Price"], s=80, alpha=0.6, color="steelblue")
+plt.xlabel("MedInc", fontsize=14)
+plt.ylabel("House Price", fontsize=14)
+plt.title(f"MedInc vs House Price (Correlation = {corr_val})", fontsize=16)
 
 plt.show()
 
 # %%
 # seaborn lmplot (quick linear fit)
-sns.lmplot(x='Longitude', y='Latitude', data=housing_data, height=9)
+sns.lmplot(x='MedInc', y='House Price', data=housing_data, height=10, line_kws={'color':'red'})
+plt.show()
+
+# %%
+# plotting correlation matrix again
+
+# correlation matrix and mask (hide upper triangle)
+corr = housing_data.corr()
+mask = np.zeros_like(corr)
+mask[np.triu_indices_from(mask)] = True   # mask upper triangle
+
+# plot
+# sns.set_style('dark')
+plt.style.use('dark_background')
+plt.figure(figsize=(16,10))
+sns.heatmap(corr, mask=mask, annot=True, annot_kws={"size":14})
+
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=12)
 plt.show()
 
 # %% [markdown]
-# ### 2. Practical pairwise exploration (RM vs PRICE, LSTAT, etc.)
+# ### 2. Practical pairwise exploration (MedInc vs PRICE, etc.)
 #
-# - RM vs PRICE: clear positive relationship (ρ ≈ +0.7). Use scatter + lmplot to see the fit and a possible ceiling effect at the top (data artifact / collection effect).
+# - MedInc vs Price: clear positive relationship (ρ ≈ +0.7). Use scatter + lmplot to see the fit and a possible ceiling effect at the top (data artifact / collection effect).
 #
-# - LSTAT vs PRICE: strong negative relationship; LSTAT (% lower status) correlates with lower prices — makes socio-economic sense (also correlated with INDUS).
+# - Latitude vs Longitude: strong negative relationship; location based results.
 #
 # - sns.pairplot(data) graphs all pairwise scatterplots + histograms on the diagonal (very lazy / powerful). Use %%time to measure runtime because pairplot can be slow on larger datasets.
 #
 # - For pairplot regression lines: sns.pairplot(data, kind='reg', plot_kws={'line_kws':{'color':'cyan'}}) — nested dict lets you style the regression line separately from points.
 
 # %%
-# pairplot with regression lines + colored regression line
-sns.pairplot(housing_data, kind='reg', plot_kws={'line_kws':{'color':'cyan'}})
-plt.show()
+# # pairplot with regression lines + colored regression line
+# sns.pairplot(housing_data, kind='reg', plot_kws={'line_kws':{'color':'cyan'}})
+# plt.show()
+# # output image saved in the same directory as this notebook 
 
 # %% [markdown]
 # ### 3. Jupyter + plotting tips & diagnostics
@@ -825,7 +840,7 @@ plt.show()
 #
 # - Simple linear regression: one feature (e.g., movie budget → movie revenue).
 #
-# - Multivariable regression: many features (e.g., 13 housing features → price).
+# - Multivariable regression: many features (e.g., 8 housing features → price).
 #
 # Model equation:
 #
@@ -835,7 +850,7 @@ plt.show()
 #
 # ### 2. Model Application:
 #
-# - Housing dataset: 13 features used to predict property price.
+# - Housing dataset: 8 features used to predict property price.
 #
 # - Model remains linear because the prediction is a linear combination of features.
 #
@@ -877,20 +892,6 @@ plt.show()
 #
 # - random_state fixes the RNG seed so your split is reproducible (same rows in train/test each run).
 
-# %% [markdown]
-# ### 3. Quick sanity checks after splitting
-#
-# - Check shapes: X_train.shape, X_test.shape (rows, columns).
-#
-# - Verify split fraction: len(X_train)/len(features) ≈ 0.8 and len(X_test)/len(features) ≈ 0.2.
-#
-# - If your dataset is small and target distribution matters, consider stratified approaches (not typical for continuous regression targets).
-
-# %% [markdown]
-# **Summary:**
-#
-# Always shuffle & split before training so your algorithm learns from one set and is evaluated on unseen data. Use train_test_split(..., test_size=0.2, random_state=...) for a reproducible 80/20 split, then quickly check shape or len(...) ratios to confirm.
-
 # %%
 # prepare target & features
 
@@ -906,6 +907,20 @@ print("X_train.shape:", X_train.shape)
 print("X_test.shape: ", X_test.shape)
 print("y_train.shape:", y_train.shape)
 print("y_test.shape: ", y_test.shape)
+
+# %% [markdown]
+# ### 3. Quick sanity checks after splitting
+#
+# - Check shapes: X_train.shape, X_test.shape (rows, columns).
+#
+# - Verify split fraction: len(X_train)/len(features) ≈ 0.8 and len(X_test)/len(features) ≈ 0.2.
+#
+# - If your dataset is small and target distribution matters, consider stratified approaches (not typical for continuous regression targets).
+
+# %% [markdown]
+# **Summary:**
+#
+# Always shuffle & split before training so your algorithm learns from one set and is evaluated on unseen data. Use train_test_split(..., test_size=0.2, random_state=...) for a reproducible 80/20 split, then quickly check shape or len(...) ratios to confirm.
 
 # %%
 # verify fractions (should be ~0.8 and ~0.2)
@@ -923,41 +938,41 @@ print("Test fraction:", len(X_test) / len(feat))
 regr = LinearRegression()
 regr.fit(X_train, y_train)
 
-# %% [markdown]
-# ### 2. Coefficients & interpretation
-#
-# - Coefficient signs matched expectations:
-#
-# - Negative: CRIM, NOX, PTRATIO, LSTAT (bad for price).
-#
-# - Positive: RM, CHAS (good for price).
-#
-# - Units: PRICE in thousands → coefficient c means ≈ c * $1000 change per 1-unit feature change.
-#
-# - Example: CHAS ≈ 2 → ≈ $2,000 premium for river-side property; RM ≈ 3.1 → ≈ $3,100 per extra room.
-
 # %%
 coef_df = pd.DataFrame(regr.coef_, index=X_train.columns, columns=["COEFs"])
 print("Intercept:", regr.intercept_)
 coef_df
 
 # %% [markdown]
-# ### 3. Evaluation (R²)
+# ### 2. Coefficients & interpretation
 #
-# - R² via regr.score(...).
+# - Coefficient signs matched expectations:
 #
-# - Training R² ≈ 0.75; Test R² ≈ 0.67.
+# - Negative: AveRooms, Population, AveOccup, Latitiude, Longitude (bad for price).
 #
-# - Test R² is lower because the model was trained on training data only; test R² measures out-of-sample predictive power.
+# - Positive: MedInc, AveBedrms (good for price).
+#
+# - Units: PRICE in hundred-thousands → coefficient c means ≈ c * $100000 change per 1-unit feature change.
+#
+# - Example: MedInc → 0.44 ≈ $ 44,000 premium for Higher Income Society;per extra unit.
 
 # %%
 print("Training data r-squared:", regr.score(X_train, y_train))
 print("Test data r-squared:    ", regr.score(X_test, y_test))
 
 # %% [markdown]
+# ### 3. Evaluation (R²)
+#
+# - R² via regr.score(...).
+#
+# - Training R² ≈ 0.60; Test R² ≈ 0.58.
+#
+# - Test R² is lower because the model was trained on training data only; test R² measures out-of-sample predictive power.
+
+# %% [markdown]
 # **Summary:**
 #
-# Trained a multivariable linear model, inspected interpretable coefficients (units in thousands → convert to dollars), and evaluated generalization with train R² ≈ 0.75 and test R² ≈ 0.67.
+# Trained a multivariable linear model, inspected interpretable coefficients (units in thousands → convert to dollars), and evaluated generalization with train R² ≈ 0.60 and test R² ≈ 0.58.
 
 # %% [markdown]
 # ## 1. Model evaluation stage
@@ -970,27 +985,45 @@ print("Test data r-squared:    ", regr.score(X_test, y_test))
 #
 # ### 2. Data transformations (log of target)
 #
-# - House price distribution is right-skewed (skew ≈ 1.1).
+# - House price distribution is left-right-both-skewed (skew ≈ 1.1).
 #
 # - Goal: reduce skew → improve linear regression fit.
 #
 # - Applied log transformation:
 
 # %%
-housing_data['House Price'].skew()
+print(housing_data['House Price'].skew())
+
+# %%
+sns.displot(housing_data['House Price'], kde=True, height=10)
+plt.show()
 
 # %%
 y_log = np.log(housing_data['House Price'])
+new_housing_data = housing_data.copy().drop(columns=['House Price'])
+new_housing_data['y_log'] = y_log
 
 # %%
-y_log.skew()
+print(y_log.skew())
+
+# %%
+sns.displot(y_log, kde=True, height=10)
+plt.show()
+
+# %%
+sns.lmplot(x='MedInc', y='House Price', data=housing_data, height=9, line_kws={'color':'red'})
+plt.show()
+
+# %%
+sns.lmplot(x='MedInc', y='y_log', data=new_housing_data, height=9, line_kws={'color':'red'})
+plt.show()
 
 # %% [markdown]
-# - Skew after log ≈ -0.33 → closer to 0 (normal distribution).
+# - Skew after log ≈ -0.17 → closer to 0 (normal distribution).
 #
-# - Visualization with sns.distplot(y_log) confirmed more symmetry.
+# - Visualization with sns.displot(y_log) confirmed more symmetry.
 #
-# - Scatterplots: PRICE vs LSTAT less linear; LOG_PRICE vs LSTAT more linear.
+# - Scatterplots: PRICE vs MedInc less linear; LOG_PRICE vs MedInc more linear.
 
 # %% [markdown]
 # ### 3. Regression with log prices
@@ -998,48 +1031,254 @@ y_log.skew()
 # - Re-trained model with log prices as target:
 
 # %%
-new_data = feat
-new_data['House Price'] = y_log
+X_train, X_test, y_train, y_test = train_test_split(feat, y_log, test_size=0.2, random_state= 0)
+
+regr = LinearRegression()
+regr.fit(X_train, y_train)
+
+print('Training data r-squared:', regr.score(X_train, y_train))
+print('Test data r-squared:', regr.score(X_test, y_test))
+
+print('Intercept', regr.intercept_)
+pd.DataFrame(data=regr.coef_, index=X_train.columns, columns=['coef'])
 
 # %% [markdown]
-# ### to be fixed
-
-# %%
-# prices = np.log(new_data['House Price']) # Use log prices
-# features = new_data.drop('House Price', axis=1)
-
-# # Drop rows where prices is NaN or inf
-# mask = (~prices.isna()) & (~np.isinf(prices))
-# features_clean = features[mask]
-# prices_clean = prices[mask]
-
-# X_train, X_test, y_train, y_test = train_test_split(features_clean, prices_clean, test_size=0.2)
-
-# regr = LinearRegression()
-# regr.fit(X_train, y_train)
-
-# print('Training data r-squared:', regr.score(X_train, y_train))
-# print('Test data r-squared:', regr.score(X_test, y_test))
-
-# print('Intercept', regr.intercept_)
-# pd.DataFrame(data=regr.coef_, index=X_train.columns, columns=['coef'])
-
-# %% [markdown]
-# - Performance improved: Train R² ↑ from 0.75 → 0.79; Test R² ↑ from 0.67 → 0.74.
+# - Performance improved: Train R² ↑ from 0.60 → 0.61; Test R² ↑ from 0.58 → 0.60.
 #
 # - Coefficients changed meaning:
 #
-# - Example: CHAS coefficient ≈ 0.08.
+# - Example: MedInc coefficient ≈ 0.18.
 #
 # - Reversed log transform to interpret in dollars:
 
 # %%
-# premium = np.e ** 0.080475
+np.e ** 0.185359
 
 # %% [markdown]
 # **Summary:**
 #
-# Introduced model evaluation stage, showed how right-skewed house prices reduce model fit, applied log transformation to reduce skew, retrained regression, and saw higher R² values. Interpretation of coefficients now requires reversing the log transform, e.g., CHAS adds ≈ $1084 premium.
+# Introduced model evaluation stage, showed how right-skewed house prices reduce model fit, applied log transformation to reduce skew, retrained regression, and saw somewhat higher R² values. Interpretation of coefficients now requires reversing the log transform.
+
+# %% [markdown]
+# ## 1. Coefficient significance & p-values
+#
+# - Beyond sign & size of coefficients, we must check statistical significance.
+#
+# - p-value is the key metric → measures how likely a coefficient is meaningful.
+#
+# - Rule of thumb: p < 0.05 → significant; p > 0.05 → not significant.
+#
+# - scikit-learn does not provide p-values → need Statsmodels library.
+
+# %% [markdown]
+# ### 2. Using Statsmodels for regression
+
+# %%
+X_incl_const = sm.add_constant(X_train)
+model = sm.OLS(y_train, X_incl_const) # OLS = Ordinary Least Squares
+results = model.fit()
+
+# get coefficients and p-values
+pd.DataFrame({'Coefficients': results.params, 'p-values': round(results.pvalues, 3)})
+
+# %% [markdown]
+# ## 3. Interpretation of results
+#
+# - Coefficients match scikit-learn results.
+#
+# - p-values show which features matter statistically.
+#
+# In this case:
+#
+# - All features are statistically significant.
+#
+# - Suggestion: consider dropping insignificant features later.
+
+# %% [markdown]
+# **Summary:**
+#
+# Introduced p-values as the "vital stats" of regression coefficients. Used Statsmodels to run OLS regression and extract both coefficients and p-values. Found that there's no feature that does not significantly contribute. Next step → check for multicollinearity.
+
+# %% [markdown]
+# ## 1. What multicollinearity is & why care
+#
+# - Definition: multicollinearity = two or more predictors highly correlated → they don’t provide independent information.
+#
+# - Consequences: unstable coefficient estimates, large variability when model changes, coefficients can flip sign, misleading inference.
+#
+# - Symptoms: sense-check signs/logic (passed here) but also need formal tests (VIF) and sensitivity checks.
+#
+# ### 2. Variance Inflation Factor (VIF) — concept & workflow
+#
+# Idea: for each feature (e.g., AveRooms) regress that feature on all other features → get $R_{feature}^{2}$
+#
+# VIF formula: 
+#
+# $VIF_{j} = \frac{1}{1−R_{j}^{2}}$​
+#
+# Interpret: large VIF → strong collinearity. Common thresholds: >10 (problematic), more conservative >5.
+#
+# Required steps (code flow):
+
+# %%
+# VIF for one column (exog must be ndarray)
+vif = variance_inflation_factor(exog= X_incl_const.values, exog_idx=1)
+
+# %%
+vif_list = [variance_inflation_factor(X_incl_const.values, i) for i in range(X_incl_const.shape[1])]
+
+vif_df = pd.DataFrame({'Feature': X_incl_const.columns, 'VIF': np.around(vif_list, 2)})
+vif_df
+
+# %% [markdown]
+# ### 3. Results & interpretation (this dataset)
+#
+# - Computed VIFs for all features (constant + 8 features).
+#
+# - All VIF values < 10 (many well below) → no strong evidence of problematic multicollinearity by common rule-of-thumb.
+#
+# - Some researchers use cutoff 5; still acceptable here.
+#
+# - Historical note: original paper had multicollinearity when including multiple pollution measures → they removed a redundant pollutant variable.
+#
+# **Summary:**
+#
+# Tested multicollinearity with VIF (regress each feature on the others, compute $1/(1−R^{2})$). VIFs are below threshold (≤10), so multicollinearity isn’t a severe problem for this model; removing redundant features remains a valid remedy if needed.
+
+# %% [markdown]
+# ## 1. Why simplify & the metric (BIC)
+#
+# - Simpler models preferred “all else equal” (Occam’s razor / Zen of Python).
+#
+# - BIC (Bayesian Information Criterion) compares models: lower BIC = better (penalizes complexity).
+#
+# - Use BIC + fit (R²) to decide if dropping a feature reduces complexity without hurting fit.
+#
+# ### 2. Procedure (how we compared models)
+#
+# - Use Statsmodels RegressionResults to get BIC and R²:
+
+# %%
+import this # huehuehue
+
+# %%
+X_incl_const = sm.add_constant(X_train)
+model = sm.OLS(y_train, X_incl_const) # OLS = Ordinary Least Squares
+results = model.fit()
+
+# get coefficients and p-values
+org_coef = pd.DataFrame({'Coefficients': results.params,
+                         'p-values': np.around(results.pvalues, 3)})
+print(results.bic)
+print(results.rsquared)
+
+# %%
+a = X_incl_const.drop(columns=['AveBedrms'], axis=1) 
+# drop one with high VIF and feels somewhat redundant
+
+model2 = sm.OLS(y_train, a) # OLS = Ordinary Least Squares
+results2 = model2.fit()
+
+# get coefficients and p-values
+reduced_coef = pd.DataFrame({'Coefficients': results2.params,
+                         'p-values': np.around(results2.pvalues, 3)})
+print(results2.bic)
+print(results2.rsquared)
+
+
+# does not improve...
+
+# %%
+b = X_incl_const.drop(columns=['Population'], axis=1) # trying something else
+
+model3 = sm.OLS(y_train, b) # OLS = Ordinary Least Squares
+results3 = model3.fit()
+
+# get coefficients and p-values
+reduced_coef2 = pd.DataFrame({'Coefficients': results3.params,
+                         'p-values': np.around(results3.pvalues, 3)})
+print(results3.bic)
+print(results3.rsquared)
+
+# better...
+
+# %% [markdown]
+# ### 3. Experiments & findings (this dataset)
+#
+# - Original (log-target) model: BIC ≈ 12604, R² ≈ 0.615
+#
+# - Remove Population → BIC lower (~ 12598), R² stable → improvement.
+#
+# - Removing other important features (e.g., MedInc) increases BIC and lowers R² → don’t drop them.
+#
+# - Check coefficient stability across models by concatenating coefficient DataFrames:
+
+# %%
+frames = [org_coef, reduced_coef, reduced_coef2]
+pd.concat(frames, axis=1)
+# coefficients remained stable (no sign flips) → no strong evidence of harmful multicollinearity; dropping column(s) is safe here.
+# except AveRooms changed its sign when AveBedrms was removed.
+# we'll see to it...
+
+# %% [markdown]
+# **Summary:**
+#
+# Used BIC + R² to guide feature removal; dropping one column reduced model complexity (BIC ↓ ~10) with no material loss in R² and coefficients stayed stable (except rooms case) —so simplified model is preferred (maybe).
+
+# %% [markdown]
+# ## 1. Residuals & why they matter
+#
+# - Residual = difference between actual target 𝑦 and predicted value 𝑦^ .
+#
+# - Example: actual = 50, predicted = 48 → residual = 2.
+#
+# - With 20k training samples → 20k predicted values → 20k residuals.
+#
+# - Residuals help check regression assumptions: if assumptions hold → model is useful; if not → results may be misleading.
+#
+# Assumptions include:
+#
+# - Linearity (fit is roughly linear; we log-transformed target to help).
+#
+# - Residuals should be random (no clear pattern).
+#
+# - Ideally, residuals are normally distributed (mean ≈ 0, skew ≈ 0).
+#
+# ### 2. What to look for in residuals
+#
+# Problematic patterns in residual plots:
+#
+# - Clear curve/shape → missing non-linear relationship.
+#
+# - Cone shape → heteroscedasticity (variance grows with predictions).
+#
+# - Vertical clusters → missing features or interactions.
+#
+# - Outliers → single data points dominate.
+#
+# - Unbalanced axis → some very large residuals → poor fit/need transformation.
+#
+# Healthy residuals:
+#
+# - No obvious pattern.
+#
+# - Cloud centered around 0, roughly symmetric.
+#
+# - Normal distribution assumption applies to residuals (not to features or targets).
+#
+# ### 3. Interpretation & key takeaway
+#
+# - Residuals show what the model fails to capture.
+#
+# - If residuals have structure → missing variables, poor transformations, or mis-specified relationships.
+#
+# - If residuals look random & centered → model assumptions reasonably hold.
+#
+# - Quote by George Box: “All models are wrong, but some are useful.”
+#
+# **Summary:**
+#
+# Residuals are the “health check” of a regression. We want them random, symmetric, and centered around zero. Patterns, clusters, or cones signal problems like missing variables or heteroscedasticity. Residual analysis validates whether our regression is a useful simplification of reality.
 
 # %% [markdown]
 #
