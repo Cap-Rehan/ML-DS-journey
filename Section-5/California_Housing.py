@@ -1281,4 +1281,200 @@ pd.concat(frames, axis=1)
 # Residuals are the “health check” of a regression. We want them random, symmetric, and centered around zero. Patterns, clusters, or cones signal problems like missing variables or heteroscedasticity. Residual analysis validates whether our regression is a useful simplification of reality.
 
 # %% [markdown]
+# ## 1. Residuals setup & calculation
+#
+# Modified model:
+#
+# - Used log prices (transformation).
+#
+# - Dropped a feature: Population.
+#
+# - Continued with Statsmodels for residual analysis.
+#
+# Residual formula: 
+#
+# - residual = y − $\hat y$
+#
+# - results.fittedvalues → fitted predictions.
+#
+# - y_train - results.fittedvalues → residuals.
+#
+# - Shortcut: results.resid.
+#
+# Residuals stored as pandas Series → can use methods like .describe().
+#
+# - Mean of residuals ≈ 0.
+
+# %%
+results3.fittedvalues
+
+# %%
+results3.resid
+
+# %%
+# type(results3.resid)
+
+print(round(results3.resid.mean(), 5))
+
+# %% [markdown]
+# ### 2. Visualization (Actual vs Predicted)
+#
+# Correlation between actual & predicted:
+
+# %%
+corr = round(y_train.corr(results3.fittedvalues), 3)
+print(corr)
+
+# %%
+# Scatter plot of actual vs predicted log prices:
+plt.figure(figsize=(12,8))
+plt.style.use('fivethirtyeight')
+plt.scatter(y_train, results3.fittedvalues, c='navy', alpha=0.5)
+plt.plot(y_train, y_train, color='cyan') # 45-degree line
+plt.title(f"Actual vs Predicted log prices (Correlation = {round(corr, 3)})", fontsize=16)
+plt.xlabel("Actual log prices, $y _i$", fontsize=14)
+plt.ylabel("Predicted log prices, $\hat y _i$", fontsize=14)
+plt.show()
+
+# %% [markdown]
+# Extended plot to actual prices (reverse transformation):
+#
+# - Applied exponential: np.e** y_train, np.e** results.fittedvalues.
+#
+# - Labeled axes: “Actual prices (10000s)” vs “Predicted prices (10000s)”.
+#
+# - Scatter points in blue.
+
+# %% [markdown]
+# ### 3. Interpretation & key takeaway
+#
+# - Strong correlation (0.78) → predictions generally close to actuals.
+#
+# - Many points lie near cyan perfect-fit line → low residuals.
+#
+# - Concern: top price bracket (~$500k properties) shows large residuals → model struggles with outliers at high end.
+#
+# - Matches earlier suspicion from histogram (outliers in distribution).
+#
+# Overall: Model performs well, but improvement needed for expensive properties.
+#
+# **Summary:**
+#
+# Residual analysis confirms the model is fairly accurate (corr ≈ 0.78), with most predictions close to actual values. Scatter plots vs perfect-fit line show good alignment, though expensive properties behave like outliers and weaken performance at the top end. Model is useful but leaves room for refinement.
+
+# %% [markdown]
+# ## 1. Residuals Analysis
+#
+# - Predictions vs actuals: 𝑦 ≠ 𝑦^. The difference 𝑦 − 𝑦^ is the residual.
+#
+# - Residuals tell us how wrong the model is. If residuals are random, model assumptions hold. If patterns appear, model is missing information.
+#
+# Assumptions checked with residuals:
+#
+# - Linearity (linear model fits the data reasonably well).
+#
+# - Residuals should be random, centered around zero, symmetric.
+#
+# - Ideally, residuals are normally distributed (mean ≈ 0, skew ≈ 0).
+#
+# Problematic residual plots:
+#
+# - Cone shape → variance grows with predictions.
+#
+# - Curved/parabolic pattern → model missing non-linear relation.
+#
+# - Clusters → missing features/interactions.
+#
+# - Outliers / heavy tails → unusual points or data collection issues.
+#
+# A “healthy” residual plot looks like a random cloud, centered around 0, symmetric.
+
+# %% [markdown]
+# ### 2. Code & Implementation
+
+# %%
+# Residuals & Residual Plots
+# Modified model: log prices, simplified (drop a column)
+
+# Calculate residuals
+# residuals = y_train - results.fittedvalues
+residuals = results3.resid   # built-in
+
+# Check mean & skew
+resid_mean = round(results3.resid.mean(), 3)
+resid_skew = round(results3.resid.skew(), 3)
+
+# Plot Actual vs Predicted
+plt.figure(figsize=(12,8))
+plt.scatter(y_train, results3.fittedvalues, c='navy', alpha=0.6)
+plt.plot(y_train, y_train, c='cyan')
+plt.xlabel("Actual log prices $y_i$", fontsize=14)
+plt.ylabel("Predicted log prices $\hat y_i$", fontsize=14)
+plt.title(f"Actual vs Predicted log prices (Corr {corr})", fontsize=17)
+plt.show()
+
+# Residuals vs Predicted
+plt.figure(figsize=(12,8))
+plt.scatter(results3.fittedvalues, results3.resid, c='navy', alpha=0.6)
+plt.xlabel("Predicted log prices $\hat y_i$", fontsize=14)
+plt.ylabel("Residuals $y_i - \hat y_i$", fontsize=14)
+plt.title("Residuals vs Fitted Values")
+plt.show()
+
+# Distribution of residuals
+sns.displot(results3.resid, color='#008080', height= 10, kde= True)  # teal
+plt.title(f"Residuals (Mean {resid_mean}, Skew {resid_skew})")
+plt.show()
+
+# %%
+X_train_org, X_test_org, y_train_org, y_test_org = train_test_split(feat, tgt, test_size=0.2)
+
+X_incl_const = sm.add_constant(X_train_org)
+model = sm.OLS(y_train_org, X_incl_const) # OLS = Ordinary Least Squares
+results = model.fit()
+
+# Residuals vs Predicted ORG model
+plt.figure(figsize=(12,8))
+plt.scatter(results.fittedvalues, results.resid, c='navy', alpha=0.6)
+plt.xlabel("Predicted prices $\hat y_i$", fontsize=14)
+plt.ylabel("Residuals $y_i - \hat y_i$", fontsize=14)
+plt.title("Residuals vs Fitted Values")
+plt.show()
+
+# Distribution of residuals of ORG model
+resid_mean_org = round(results.resid.mean(), 3)
+resid_skew_org = round(results.resid.skew(), 3)
+
+sns.displot(results.resid, color='#008080', height= 10, kde= True)  # teal
+plt.title(f"Residuals (Mean {resid_mean_org}, Skew {resid_skew_org})")
+plt.show()
+
+# %% [markdown]
+# ### 3. Observations / Takeaways
+#
+# - Actual vs Predicted: correlation ~0.78, many points close to cyan line, but high-price homes ($500k) deviate strongly.
+#
+# - Residuals vs Predicted: residuals mostly random, centered around 0, symmetric → good. But expensive homes create a visible pattern (line-up).
+#
+# Distribution of Residuals:
+#
+# - Mean ≈ 0 (by design).
+#
+# - Skew ≈ -0.044 (close to normal).
+#
+# - Shape: symmetric but with a lil long tails → more extreme residuals than normal distribution.
+#
+# Comparison with original model (no log transform, all features):
+#
+# - Residuals show sinking wedge → log transform was helpful.
+#
+# - Skew ~1.069 → non-normal, confirms transformation improved model fit.
+#
+# - Omitting key variables creates visible clusters (banding), showing missing info leaks into residuals.
+#
+# **Summary:**
+#
+# Residual analysis shows that our simplified log-price model performs well: residuals are random, symmetric, and nearly normal. The log transformation improved normality and reduced skew, while omitted features caused visible clustering. High-value homes remain outliers, pointing to limitations in our model.
+
+# %% [markdown]
 #
