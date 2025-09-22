@@ -724,10 +724,11 @@ sns.jointplot(x=housing_data["AveRooms"], y=housing_data["AveBedrms"], height= 1
 plt.show()
 
 # %%
-sns.set_context("talk")
-sns.jointplot(x=housing_data["Longitude"], y=housing_data["Latitude"], height= 11, kind='kde', color='indigo')
+# sns.set_context("talk")
+# sns.jointplot(x=housing_data["Longitude"], y=housing_data["Latitude"], height= 11, kind='kde', color='indigo')
 
-plt.show()
+# plt.show()
+# # image saved as kde.png
 
 # %% [markdown]
 # When to use which kind:
@@ -1173,8 +1174,8 @@ print(results.bic)
 print(results.rsquared)
 
 # %%
-a = X_incl_const.drop(columns=['AveBedrms'], axis=1) 
-# drop one with high VIF and feels somewhat redundant
+a = X_incl_const.drop(columns=['AveBedrms', 'MedInc'], axis=1) 
+# drop two major columns
 
 model2 = sm.OLS(y_train, a) # OLS = Ordinary Least Squares
 results2 = model2.fit()
@@ -1185,8 +1186,7 @@ reduced_coef = pd.DataFrame({'Coefficients': results2.params,
 print(results2.bic)
 print(results2.rsquared)
 
-
-# does not improve...
+# worse...
 
 # %%
 b = X_incl_const.drop(columns=['Population'], axis=1) # trying something else
@@ -1477,4 +1477,156 @@ plt.show()
 # Residual analysis shows that our simplified log-price model performs well: residuals are random, symmetric, and nearly normal. The log transformation improved normality and reduced skew, while omitted features caused visible clustering. High-value homes remain outliers, pointing to limitations in our model.
 
 # %% [markdown]
+# ## 1. Predictions, MSE & R-Squared
 #
+# Mean Squared Error (MSE):
+#
+# - Formula: 
+#
+# $𝑀𝑆𝐸 = \frac{1}{n} ∑(𝑦 − \hat 𝑦)^2$
+#
+# - Equivalent to squared residuals averaged → penalizes large errors heavily.
+#
+# - Sensitive to outliers because squaring magnifies big residuals.
+#
+# R-Squared:
+#
+# - Relative measure of fit, unitless, always between 0–1.
+#
+# - Explains proportion of variance captured by the model.
+#
+# Comparison:
+#
+# - R-squared → relative, unitless.
+#
+# - MSE → absolute, depends on units of target variable (e.g., $10000s).
+#
+# Model Comparison Example:
+#
+# - Reduced Log Model → highest R², lower MSE.
+#
+# - Full Normal Price Model → lower R², higher MSE (~0.524, meaning $52.4k average squared error).
+#
+# - Omitted Variable Model → worst R² and high error, clear sign of missing info.
+#
+# Prediction ranges:
+#
+# - Real-world estimators (Zoopla/Zillow) provide a range (estimate ± margin).
+#
+# - Range width reflects confidence, tied to residuals & MSE.
+
+# %% [markdown]
+# ### 2. Code & Implementation
+
+# %%
+# Mean Squared Error & R-squared with Statsmodels
+
+# Reduced log model
+reduced_log_mse = round(results3.mse_resid, 3)
+reduced_log_rsquared = round(results3.rsquared, 3)
+
+# Full model (normal prices, all features)
+normal_mse = round(results.mse_resid, 3)
+normal_rsquared = round(results.rsquared, 3)
+
+# Omitted variable model (log prices, missing features)
+omitted_var_mse = round(results2.mse_resid, 3)
+omitted_var_rsquared = round(results2.rsquared, 3)
+
+# Compare in DataFrame
+comparison = pd.DataFrame({"R-Squared": [reduced_log_rsquared, normal_rsquared, 
+            omitted_var_rsquared], "MSE": [reduced_log_mse, normal_mse, omitted_var_mse]},
+            index=["Reduced Log Model", "Normal Price Model", "Omitted Var Model"])
+print(comparison)
+
+# %% [markdown]
+# ### 3. Observations / Takeaways
+#
+# - R² is consistent and comparable across models, MSE is scale-dependent.
+#
+# - Log transformation improved residual distribution, gave higher R², and more meaningful MSE.
+#
+# - Models missing key variables perform worst → banding/clustering in residuals.
+#
+# - Professional estimators (Zoopla/Zillow) provide estimate + range, showing prediction confidence.
+#
+# Our future goal: provide not only a point prediction, but also a confidence interval, tied to residual spread and MSE.
+#
+# **Summary:**
+#
+# MSE and R-squared complement each other. R² shows relative explanatory power, while MSE gives absolute average error in the units of the target. Simplified log model performs best, omitted variable model worst. Real-world practice mirrors this — predictions are always given with a confidence range, which we’ll connect back to residuals and MSE in the next step.
+
+# %% [markdown]
+# ## 1. Prediction Intervals & RMSE
+#
+# Prediction needs two parts:
+#
+# - Estimated value $(\hat 𝑦)$ & A range (prediction interval) around it.
+#
+# Normal distribution connection:
+#
+# - ~68% of values lie within ±1 standard deviation (σ).
+#
+# - ~95% of values lie within ±2σ.
+#
+# Residuals: Distribution of residuals tells us the variance of predictions.
+#
+# RMSE (Root Mean Squared Error):
+#
+# - RMSE = $\sqrt{MSE}$
+#
+# - Represents the standard deviation of residuals.
+#
+# - Used to build prediction intervals around $\hat y$
+#
+# 95% Prediction Interval:
+#
+# - Upper bound: $\hat y + 2 RMSE$
+#
+# - Lower bound: $\hat y - 2 RMSE$
+#
+# Key Contrast:
+#
+# - R² measures fit quality (variance explained).
+#
+# - RMSE measures prediction accuracy and gives interpretable error ranges.
+
+# %% [markdown]
+# ### 2. Code & Implementation
+
+# %%
+# RMSE calculation
+rmse = np.sqrt(reduced_log_mse)
+print("1 S.D. in log prices: ", rmse)
+print("2 S.D. in log prices: ", 2 * rmse)
+
+# Example prediction: y_hat = $300,000
+upper_bound = np.log(3) + rmse
+lower_bound = np.log(3) - rmse
+
+# Convert back to dollar values
+upper_price = np.e**upper_bound * 100000
+lower_price = np.e**lower_bound * 100000
+
+print("Upper bound (68% PI): ", upper_bound)
+print("Lower bound (68% PI): ", lower_bound)
+
+print("Upper price (68% PI): $", upper_price)
+print("Lower price (68% PI): $", lower_price)
+
+# %% [markdown]
+# ### 3. Observations / Takeaways
+#
+# - RMSE connects residuals to prediction intervals → direct measure of prediction error.
+#
+# - Prediction intervals communicate uncertainty, just like professional tools (Zoopla/Zillow).
+#
+# - Correct order of applying logs and RMSE adjustment is crucial — wrong order gives wrong bounds.
+#
+# - Example: For $30,000 estimate, 68% PI gave bounds roughly between $210k and $427k.
+#
+# - R² ≠ prediction accuracy → only RMSE-based intervals reveal how good/bad predictions are in practice.
+#
+# **Summary:**
+#
+# Prediction requires not only a point estimate but also a confidence range. By using the residual distribution and RMSE, we can calculate intervals (e.g., ±σ for 68% coverage). This bridges model fit with real-world predictive usefulness, highlighting why RMSE is often preferred when evaluating predictive power.
