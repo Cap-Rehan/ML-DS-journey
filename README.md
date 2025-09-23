@@ -26,6 +26,9 @@ A collection of Python scripts explaining various machine learning concepts and 
 ### Section 5: Case Study - California Housing
 
 *   **`Section-5/California_Housing.py`**: A comprehensive case study that walks through the entire machine learning workflow using the California Housing dataset. It covers data exploration, visualization, feature engineering, and building a linear regression model with `statsmodels` and `scikit-learn`.
+*   **`Section-5/Valuation_tool.py`**: A tool for estimating house prices based on user input. It uses the California Housing dataset and a linear regression model to predict prices based on features like location, number of rooms, and population.
+*   **`Section-5/california_valuation.py`**: The valuation model packed as a module for easy reuse. Import this module in other scripts to use the house price prediction functionality.
+*   **`Section-5/test_val.py`**: A test script to validate the functionality of the `california_valuation` module.
 
 ## Setup
 
