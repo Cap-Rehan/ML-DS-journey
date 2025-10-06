@@ -32,8 +32,37 @@ A collection of Python scripts explaining various machine learning concepts and 
 
 ## Setup
 
-To run these scripts, you need to have Python installed.
-You can install the necessary libraries using pip:
+### Modern Environment (MacBook M4 - 2025)
+
+This project now includes a complete development environment setup:
+
+**Environment:**
+- Python 3.11.10 (via pyenv)
+- Virtual environment (`ml_env/`)
+- Zed editor configuration
+- All modern ML libraries
+
+**Quick Start:**
+```bash
+# Activate virtual environment
+source ml_env/bin/activate
+
+# Test all libraries work
+python test_imports.py
+
+# Open in Zed editor
+zed .
+```
+
+**Libraries included:**
+- pandas, numpy, scikit-learn
+- matplotlib, seaborn, plotly
+- jupyter, jupyterlab
+- statsmodels, black, ruff
+
+### Legacy Setup (for reference)
+
+For basic setup without virtual environment:
 
 ```bash
 pip install pandas matplotlib scikit-learn numpy sympy statsmodels
