@@ -211,11 +211,12 @@ for i in generate_squares(11):
 
 # %%
 def email_body_generator(path):
+
     for root, dirnames, filenames in walk(path):
         for file_name in filenames:
-            file_path = join(root, file_name)
-            stream = open(file_path, encoding="latin-1")
 
+            file_path = join(root, file_name)
+            stream = open(file_path, encoding= 'latin-1')
             is_body = False
             lines = []
 
@@ -275,13 +276,15 @@ SPAM_1_PATH = "SpamData/01_Processing/spam_assassin_corpus/spam_1"
 SPAM_2_PATH = "SpamData/01_Processing/spam_assassin_corpus/spam_2"
 EASY_NONSPAM_1_PATH = "SpamData/01_Processing/spam_assassin_corpus/easy_ham_1"
 EASY_NONSPAM_2_PATH = "SpamData/01_Processing/spam_assassin_corpus/easy_ham_2"
+SPAM_CAT = 1
+HAM_CAT = 0
 
 # Example: build DataFrame from SPAM_1 folder
+# classification = 1 for spam and 0 for nonspam/ham
 spam_emails = df_from_directory(SPAM_1_PATH, 1)
 
 # Check dimensions
 print(spam_emails.shape)
-
 # Check first 5 rows
 spam_emails.head()
 
@@ -299,6 +302,132 @@ spam_emails.head()
 # - Defined relative paths for spam and ham datasets, then built spam_emails DataFrame.
 #
 # This pipeline lets us efficiently load thousands of emails into a clean, labeled dataset.
+
+# %% [markdown]
+# ## 1. Loading all spam emails into one DataFrame
+#
+# Key terms: append(), constants, category labels
+# - Previously, we loaded emails only from spam_1.
+# - Now we extend this by appending emails from spam_2.
+# - To improve readability, we replace raw numbers (1, 0) with semantic constants.
+#
+# Convention:
+# - Spam = 1
+# - Ham (non-spam) = 0
+
+# %%
+spam_emails = pd.concat([spam_emails, df_from_directory(SPAM_2_PATH, SPAM_CAT)])
+
+print(spam_emails.shape)
+spam_emails.tail()
+
+# %% [markdown]
+# ### 2. Creating a DataFrame for non-spam (ham) emails
+#
+# Key terms: ham emails, symmetry, reuse of logic
+# - Same logic as spam → reuse the same function.
+# - Load both easy_ham_1 and easy_ham_2.
+# - Category label = HAM_CAT (0).
+
+# %%
+ham_emails = df_from_directory(EASY_NONSPAM_1_PATH, HAM_CAT)
+ham_emails = pd.concat([ham_emails, df_from_directory(EASY_NONSPAM_2_PATH, HAM_CAT)])
+
+print(ham_emails.shape)
+ham_emails.tail()
+
+# %% [markdown]
+# ### 3. Combining spam and non-spam into one dataset
+#
+# Key terms: pd.concat(), full dataset, inspection
+# - Final step: merge spam + ham into one DataFrame.
+# - This is the dataset we’ll use for training the Naive Bayes model.
+
+# %%
+data = pd.concat([spam_emails, ham_emails])
+
+print("Shape of entire dataframe is: ", data.shape)
+data.tail()
+
+# %% [markdown]
+# **Summary**
+#
+# We loaded all email files from disk and converted them into a single, clean Pandas DataFrame.
+# Spam and non-spam emails were labeled consistently using constants and merged into one dataset with 5800 samples.
+# This marks the transition from raw files → structured data, which is exactly what we need before feature extraction and model training.
+
+# %% [markdown]
+# ## 1. Checking for missing (null) values
+#
+# Key terms: isnull(), None, missing values vs empty strings
+# - We first check whether any email bodies are missing (i.e., None / null).
+#
+# Accessing a column can be done in two equivalent ways:
+# - data.MESSAGE
+# - data['MESSAGE']
+#
+# isnull() returns a Boolean series (True/False for each row).
+# - To check if any missing values exist, chain .values.any().
+# - In Python, missing values are represented by None, not null.
+
+# %%
+print(data.MESSAGE.isnull().any())
+print(data.MESSAGE.isnull().sum())
+
+# %% [markdown]
+# Important distinction:
+# - None → missing value
+# - "" → empty string (length = 0, but still a valid string)
+
+# %% [markdown]
+# ### 2. Detecting empty emails (strings of length zero)
+#
+# Key terms: empty strings, str.len(), Boolean masking
+# - Even if there are no null values, emails may still be empty strings.
+#
+# Strategy:
+# 1. Convert column to string
+# 2. Measure string length
+# 3. Check if length equals zero
+
+# %%
+(data.MESSAGE.str.len() == 0).any()
+
+# %%
+print((data.MESSAGE.str.len() == 0).sum()) # counting
+data[data.MESSAGE.str.len() == 0] # displaying
+
+# %% [markdown]
+# ### 3. Locating and identifying the problematic rows
+#
+# Key terms: Boolean indexing, system files, .index, get_loc()
+#
+# - To find which rows are empty, we filter the dataframe using the Boolean condition.
+
+# %%
+print(data[data.MESSAGE.str.len() == 0].index)
+
+# %% [markdown]
+# Why this happened:
+# - os.walk() blindly reads all files in a directory.
+# - System files (cmds, .DS_Store) are not emails but got included anyway.
+# - .DS_Store is a macOS hidden file.
+# - cmds files are system artifacts from extracted archives.
+#
+
+# %%
+# locating the entry
+
+data.index.get_loc('cmds') # not working for some reason...
+
+# %% [markdown]
+# **Summary**
+#
+# We performed the first serious data-cleaning audit on our dataset.
+# - Verified there are no null (None) values.
+# - Detected 4 empty emails caused by system files, not real data.
+# - Traced the issue back to os.walk() indiscriminately reading all files.
+#
 
 # %% [markdown]
 #
