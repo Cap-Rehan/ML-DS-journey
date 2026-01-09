@@ -28,6 +28,8 @@ from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
+from bs4 import BeautifulSoup
+
 # %% [markdown]
 # ## 1. Notebook Setup & Constants
 #
@@ -733,7 +735,7 @@ plt.show()
 # - Provides tools for tokenization, stop words, stemming, etc.
 
 # %%
-msg = "All work and no play makes Jack a dull boy." # the shining reference
+msg = "All work and no play makes Jack a dull boy. # The Shining 1980 reference"
 msg.lower()
 
 # %% [markdown]
@@ -827,3 +829,134 @@ print(junk)
 #
 # We introduced tokenization using NLTK, downloaded the required resources, and learned how to remove stop words efficiently using sets.
 # At this point, our text is lowercase, tokenized, and partially cleaned—but it still contains punctuation and unstemmed words.
+
+# %% [markdown]
+# ## 1. Word stems & stemming
+#
+# Key terms: stemming, word stem, Porter Stemmer
+# - Stemming reduces words to their base/root form so related words are treated the same.
+# - Example:
+# 	- fishing, fished, fisher, fishlike → fish
+#
+# - Stemming does not guarantee real words:
+# 	- argue, argued, argues, arguing → argu
+# 	- This is intentional: the goal is grouping variants, not linguistic correctness.
+# - The standard English stemmer is the Porter Stemmer, created by Martin Porter (1980s).
+# - NLTK also provides the SnowballStemmer, useful for non-English languages.
+
+# %%
+lyrics= """This love is ablaze, I saw flames from the side of the stage
+And the fire brigade comes in a couple of days
+Until then, we've got nothin' to say and nothin' to know
+But somethin' to drink and maybe somethin' to smoke
+Let it go until our roads are changed
+Singin' "We Found Love" in a local rave
+No, I don't really know what I'm supposed to say
+But I can just figure it out and then just hope and pray
+I told her my name and said, "It's nice to meet ya"
+Then she handed me a bottle of water filled with tequila
+I already know she's a keeper just from this one small act of kindness
+I'm in deep shit if anybody finds out
+I meant to drive home but I've drunk all of it now
+Not soberin' up, we just sit on the couch
+One thing led to another, now, she's kissin' my mouth"""
+
+words = word_tokenize(lyrics.lower())
+stemmer = PorterStemmer()
+
+filtered= []
+junk= []
+
+for word in words:
+    stemmed_word= stemmer.stem(word)
+
+    if word not in stop_words:
+        filtered.append(stemmed_word)
+    else:
+        junk.append(stemmed_word)
+print(words, "\n\n")
+print(filtered, "\n\n")
+print(junk)
+
+# %% [markdown]
+# ### 2. Removing punctuation
+#
+# Key terms: punctuation filtering, isalpha()
+# - Our output still contains punctuation (., !, ?).
+# - Naive Bayes ignores grammar → punctuation adds noise.
+# - Python strings provide a simple solution: isalpha().
+
+# %%
+words = word_tokenize(msg.lower())
+
+filtered= []
+junk= []
+
+for word in words:
+    stemmed_word= stemmer.stem(word)
+
+    if word not in stop_words and word.isalpha():
+        filtered.append(stemmed_word)
+    else:
+        junk.append(stemmed_word)
+
+print(filtered, "\n\n")
+print(junk)
+
+# %% [markdown]
+# **Summary**
+#
+# We added the final two preprocessing steps: stemming and punctuation removal.
+# Stemming collapses word variants into a single root, and isalpha() cleanly filters punctuation.
+# At this point, our text is lowercased, tokenized, stop-word filtered, stemmed, and punctuation-free.
+
+# %% [markdown]
+# ## 1. What HTML tags are & why we remove them
+#
+# Key terms: HTML, tags, rich text, plain text
+# - HTML adds structure and formatting to emails (bold text, paragraphs, images, links).
+# - Email clients render HTML nicely, but underneath it’s just raw text with tags.
+# - HTML uses opening and closing tags (\<b>...\</b>, \<p>...\</p>, \<h1>...\</h1>).
+#
+# For Naive Bayes + Bag of Words, formatting is irrelevant → HTML tags are noise.
+# We only care about actual words, not presentation.
+
+# %% [markdown]
+# ### 2. Seeing HTML inside real emails
+#
+# Key terms: HTML email body, raw email text, pandas .at
+# - Some emails in the dataset contain large blocks of HTML.
+# - We can inspect a specific email efficiently using .at[index, column].
+
+# %%
+data.at[7, 'MESSAGE']
+
+# %% [markdown]
+# 3. Removing HTML tags with BeautifulSoup
+#
+# Key terms: BeautifulSoup, HTML parser, get_text()
+# - Python provides an excellent library for HTML parsing: BeautifulSoup.
+# - It can parse, prettify, and strip HTML with minimal code.
+# - Python ships with a built-in HTML parser → no extra setup needed.
+
+# %%
+soup = BeautifulSoup(data.at[7, 'MESSAGE'], 'html.parser')
+
+# %%
+print(soup.prettify())
+
+# %%
+clean_text= soup.get_text()
+print(clean_text)
+
+# %% [markdown]
+# **Summary**
+#
+# HTML tags exist to make emails look good, not to add meaning.
+# For our spam classifier, HTML is pure noise and must be stripped.
+# Using BeautifulSoup, we cleanly remove all tags and extract only the text.
+#
+# Next step: combine all preprocessing steps into reusable Python functions and scale this to every email in the dataset.
+
+# %% [markdown]
+#
