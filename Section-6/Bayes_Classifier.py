@@ -20,6 +20,7 @@
 from os import walk
 from os.path import join
 
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -27,6 +28,9 @@ import nltk
 from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+
+from wordcloud import WordCloud
+from PIL import Image
 
 from bs4 import BeautifulSoup
 
@@ -949,6 +953,7 @@ print(soup.prettify())
 clean_text= soup.get_text()
 print(clean_text)
 
+
 # %% [markdown]
 # **Summary**
 #
@@ -957,6 +962,399 @@ print(clean_text)
 # Using BeautifulSoup, we cleanly remove all tags and extract only the text.
 #
 # Next step: combine all preprocessing steps into reusable Python functions and scale this to every email in the dataset.
+
+# %% [markdown]
+# ## 1. Designing the email cleaning function
+#
+# Key terms: preprocessing function, modularity, reusability
+# - Goal: wrap all preprocessing steps into a single function.
+# - The function should return a list of cleaned tokens (not a string).
+# - Inputs:
+#     - message → raw email body
+#     - stemmer → optional (default: PorterStemmer)
+#     - stop_words → optional (default: English stop words set)
+# - Making stemmer and stop words optional arguments keeps the function flexible.
+#
+# ⸻
+#
+# ### 2. Cleaning text: lowercase → tokenize → filter → stem
+#
+# Key terms: normalization, tokenization, stop-word removal, stemming
+# - Steps inside the function:
+# 	1.	Convert text to lowercase
+# 	2.	Tokenize using word_tokenize
+# 	3.	Remove stop words
+# 	4.	Remove punctuation using isalpha()
+# 	5.	Stem remaining words
+# - Output: a list of clean, meaningful word stems
+#
+
+# %%
+def clean_msg(message, stemmer= PorterStemmer(),
+                stop_words= set(stopwords.words('english'))):
+
+    words= word_tokenize(message.lower())
+    filtered_words= []
+
+    for word in words:
+        if word not in stop_words and word.isalpha():
+            filtered_words.append(stemmer.stem(word))
+
+    return filtered_words
+
+
+# %%
+r1= clean_msg(data.at[3, 'MESSAGE'])
+
+
+# %% [markdown]
+# ### 3. Extending the function: removing HTML tags
+#
+# Key terms: BeautifulSoup, HTML stripping, pipeline completion
+# - HTML must be removed before tokenization, otherwise tags pollute tokens.
+# - Use BeautifulSoup with Python’s built-in HTML parser.
+# - Replace message.lower() with cleaned HTML-free text.
+
+# %%
+def clean_msg_no_html(message, stemmer= PorterStemmer(),
+                    stop_words= set(stopwords.words('english'))):
+    
+    soup= BeautifulSoup(message, 'html.parser')
+    clean_message = soup.get_text()
+
+    words= word_tokenize(clean_message.lower())
+    filtered_words= []
+
+    for word in words:
+        if word not in stop_words and word.isalpha():
+            filtered_words.append(stemmer.stem(word))
+
+    return filtered_words
+
+
+# %%
+r2= clean_msg_no_html(data.at[3, 'MESSAGE'])
+
+# %%
+# exporting both to compare
+
+# import json
+
+# with open("r1data.json", "w") as f:
+#     json.dump(r1, f)
+
+# with open("r2data.json", "w") as f:
+#     json.dump(r2, f)
+
+# %% [markdown]
+# **Summary**
+#
+# We consolidated all preprocessing logic into reusable Python functions.
+# The final pipeline removes HTML, normalizes text, tokenizes, filters stop words, removes punctuation, and stems words.
+# This function is now ready to be applied to all 5800 emails.
+
+# %% [markdown]
+# ## 1. Reviewing dataframe slicing & selection
+#
+# Key terms: at, iat, iloc, labels vs positions
+# - at[row_label, column_label]
+#     - Works with names, not positions
+#     - Fastest way to access a single scalar value
+#
+# - iat[row_position, column_position]
+#     - Works with integer positions
+#     - Useful inside loops
+#
+# - iloc[start:stop]
+#     - Slice rows by position
+#     - Stop index is exclusive
+#     - Works on both DataFrames and Series
+
+# %%
+data.at[50, 'MESSAGE']
+
+# %%
+data.iat[49, 0]
+
+# %%
+data.iloc[48:52]
+
+# %% [markdown]
+# ### 2. Applying a function to multiple emails
+#
+# Key terms: apply, vectorization, series transformation
+#
+# - Important:
+#     - Pass function name only
+#     - No parentheses
+#     - Pandas calls the function once per row
+# - Output:
+#     - A Series
+#     - Each entry is a list of cleaned tokens
+#     - Effectively a list of lists
+
+# %%
+# Select a subset of messages:
+first_emails = data.MESSAGE.iloc[0:5]
+print(type(first_emails))
+first_emails
+
+# %%
+# Apply cleaning function to each email:
+first_emails.apply(clean_msg_no_html)
+
+# %% [markdown]
+# ### 3. Flattening nested lists & scaling to all messages
+#
+# Key terms: nested lists, flattening, list comprehension, benchmarking
+
+# %%
+# %%time
+
+nested_list= data.MESSAGE.apply(clean_msg_no_html)
+
+# %%
+print(type(nested_list))
+nested_list
+
+# %%
+# Flatten using loops (classic approach):
+
+flat_list= []
+
+# for sublist in nested_list:
+#     for item in sublist:
+#         flat_list.append(item)
+
+# Flatten using list comprehension (preferred):
+
+flat_list= [item for sublist in nested_list for item in sublist]
+
+len(flat_list)
+
+# %%
+flat_list
+
+# %% [markdown]
+# **Summary**
+#
+# You reviewed precise dataframe slicing, learned when to use at, iat, and iloc, and applied a custom NLP cleaning function to an entire dataset using apply.
+# You also learned how to flatten nested token lists and benchmark execution time.
+# At this point, all 5800 emails are fully cleaned, tokenized, stemmed, and HTML-free — ready for feature extraction and Naive Bayes.
+
+# %% [markdown]
+# ## 1. Using logic to slice dataframes
+#
+# Key terms: boolean indexing, conditional slicing, dataframe subsets
+#
+# Pandas allows logical conditions inside square brackets
+
+# %%
+print(type(data[data.CATEGORY == 0]))
+data[data.CATEGORY == 0]
+
+# %% [markdown]
+# ### 2. Extracting indices for spam & ham emails
+#
+# Key terms: index extraction, label tracking
+#
+# Store indices (DOC_IDs) directly:
+
+# %%
+ids_spam= data[data.CATEGORY == 1].index
+ids_ham= data[data.CATEGORY == 0].index
+
+type(ids_spam) # not lists or series or DataFrame
+
+# %%
+ids_ham
+
+# %% [markdown]
+# ### 3. Subsetting a series using an index
+#
+# Key terms: loc, index-based selection, aligned slicing
+#
+# - nested_list is a Series
+#
+# - Index values align with data
+#
+# - Use .loc[] to subset using stored indices:
+
+# %%
+nested_list_spam= nested_list[ids_spam]
+nested_list_ham= nested_list[ids_ham]
+
+# %%
+print(nested_list_spam.shape)
+nested_list_spam
+
+# %%
+list_spam= [item for sublist in nested_list_spam for item in sublist]
+len(list_spam)
+
+# %%
+list_ham= [item for sublist in nested_list_ham for item in sublist]
+len(list_ham)
+
+# %%
+# storing count values in a dictionary (side quest)
+
+words_count= {}
+
+for the_word in list_spam:
+    if (the_word not in words_count):
+        words_count[the_word] = 1
+    else: words_count[the_word] += 1
+
+words_count
+
+# %% [markdown]
+# ### 4. Counting total & unique words
+#
+# Key terms: pd.Series, value_counts, vocabulary size
+
+# %%
+spammy_words= pd.Series(list_spam)
+spammy_words.shape[0] # number of all words
+
+# %%
+spammy_words.value_counts().shape # number of unique words
+
+# %%
+spammy_words.value_counts()[:10] # frequency
+
+# %%
+normal_words= pd.Series(list_ham)
+print(normal_words.value_counts().shape)
+normal_words.value_counts()[:10]
+
+# %% [markdown]
+# **Summary**
+#
+# You used boolean logic to slice dataframes, extracted DOC_IDs, subset tokenized email data via .loc, flattened nested word lists, and computed total word counts, vocabulary size, and most frequent words for spam and non-spam emails.
+# At this point, you’ve fully built the bag-of-words foundation required for Naive Bayes and unlocked statistical insight into spam vs ham language patterns.
+
+# %% [markdown]
+# ## A little note:
+#
+# Word clouds are fast, visual tools for highlighting frequent words in large text datasets.
+# They trade precision for clarity and attention, which makes them ideal for reports and presentations.
+# To build them in Python, we install the wordcloud package, an essential real-world skill before moving on to actual word-cloud generation code.
+
+# %% [markdown]
+# ## 1. Creating a Basic Word Cloud
+#
+# Key terms: WordCloud, generate, imshow, interpolation
+#
+# - Generate from a single string (WordCloud().generate(text))
+# - Display with plt.imshow(word_cloud, interpolation='bilinear')
+# - Remove axes using plt.axis('off')
+
+# %%
+word_cloud= WordCloud().generate(email_body)
+
+plt.figure(figsize=(8,8), dpi=227)
+plt.imshow(word_cloud, interpolation='bilinear')
+plt.axis('off')
+plt.show() # we'll learn customization later
+
+# %% [markdown]
+# ### 2. Using NLTK Corpora (Entire Books)
+#
+# Key terms: nltk.corpus, gutenberg, words()
+# - Download corpora: gutenberg, shakespeare
+# - Load text via nltk.corpus.gutenberg.words()
+# - Output is token stream, not a string
+
+# %%
+nltk.download('brown')
+nltk.download('shakespeare')
+nltk.download('gutenberg')
+
+# %%
+corpus1= nltk.corpus.gutenberg.words('whitman-leaves.txt')
+
+# %%
+type(corpus1)
+
+# %% [markdown]
+# ### 3. Preparing Corpus for WordCloud
+#
+# Key terms: tokens, join, string conversion
+# - Join tokens → list → single string
+# - WordCloud requires plain string input
+
+# %%
+word_list= [word for word in corpus1]
+corpus1_string= ' '.join(word_list)
+
+word_cloud = WordCloud().generate(corpus1_string)
+
+plt.figure(figsize=(6,6), dpi=150, facecolor='black')
+plt.imshow(word_cloud, interpolation='bilinear')
+plt.axis('off')
+plt.show()
+
+# %% [markdown]
+# **Summary**
+#
+# In this lesson, you learned how to create a basic word cloud using the wordcloud library and display it cleanly with Matplotlib. You also saw how NLTK provides full literary corpora like Moby Dick and Shakespeare’s plays, and why these need to be converted from token streams into a single string before visualization. This prepares you to use large real-world text sources for word clouds and sets the stage for more advanced styling, masking, and comparison-based visual analysis in the next steps.
+
+# %% [markdown]
+# ## 1. Mask Preparation (Image → Array)
+#
+# Key terms: PIL (Pillow), RGB, NumPy array, mask
+
+# %%
+PNG_PATH= 'SpamData/01_Processing/wordcloud_resources/skull-icon.png'
+
+icon = Image.open(PNG_PATH)
+
+image_mask= Image.new(mode= "RGB", size= icon.size, color=(255,255,255))
+image_mask.paste(icon, box= icon)
+
+rgb_array= np.array(image_mask)
+
+# %% [markdown]
+# ### 2. WordCloud with Mask & Styling
+#
+# Key terms: WordCloud, mask, colormap, max_words
+
+# %%
+word_cloud= WordCloud(mask= rgb_array, background_color= 'white', max_words= 500) # colormap?
+word_cloud.generate(corpus1_string)
+
+plt.figure(figsize=(6,6), dpi=150)
+plt.imshow(word_cloud, interpolation='bilinear')
+plt.axis('off')
+plt.show()
+
+# %% [markdown]
+# ### 3. Understanding How the Mask Works
+#
+# Key terms: RGB values, pixel-level control
+#
+# - (255,255,255) → blocked
+# - (0,0,0) → words allowed
+
+# %%
+print(rgb_array.shape)
+
+# side quest started
+pixels = rgb_array.reshape(-1, 3)
+print(pixels.shape)
+
+# %%
+values, counts = np.unique(pixels, axis=0, return_counts=True)
+
+# %%
+for v, c in zip(values, counts): # side quest ends
+    print(v, '=', c)
+
+# %% [markdown]
+# **Summary**
+#
+# In this lesson, you built a masked word cloud by converting an image into an RGB NumPy array and passing it to WordCloud. You styled the output using Matplotlib and explored how pixel-level RGB values control where words can appear. This approach works with any custom image and lets you generate visually meaningful word clouds from large text sources like novels or email corpora.
 
 # %% [markdown]
 #
