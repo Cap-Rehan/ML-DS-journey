@@ -1295,6 +1295,9 @@ plt.imshow(word_cloud, interpolation='bilinear')
 plt.axis('off')
 plt.show()
 
+# %%
+print(corpus1_string)
+
 # %% [markdown]
 # **Summary**
 #
@@ -1357,4 +1360,78 @@ for v, c in zip(values, counts): # side quest ends
 # In this lesson, you built a masked word cloud by converting an image into an RGB NumPy array and passing it to WordCloud. You styled the output using Matplotlib and explored how pixel-level RGB values control where words can appear. This approach works with any custom image and lets you generate visually meaningful word clouds from large text sources like novels or email corpora.
 
 # %% [markdown]
+# ## 1. Ham Word Cloud (Thumbs-Up Mask)
 #
+# Key terms: mask, join, colormap, WordCloud
+
+# %%
+THUMBS_UP = 'SpamData/01_Processing/wordcloud_resources/thumbs-up.png'
+THUMBS_DOWN = 'SpamData/01_Processing/wordcloud_resources/thumbs-down.png'
+
+FONT_PATH = 'SpamData/01_Processing/wordcloud_resources/OpenSansCondensed-Bold.ttf'
+
+# %%
+# prepare string
+ham_string= ' '.join(list_ham)
+
+# prepare mask
+icon= Image.open(THUMBS_UP)
+new_mask= Image.new(mode= "RGB", size= icon.size, color= (255, 255, 255))
+new_mask.paste(icon, box= icon)
+
+# creating the array
+array_up= np.array(new_mask)
+
+# %%
+# generating wordcloud
+ham_cloud= WordCloud(mask= array_up, font_path= FONT_PATH, max_words= 500,
+                    min_font_size= 6, colormap= 'autumn') # try relative scaling
+ham_cloud.generate(ham_string.upper())
+
+# plotting
+plt.figure(figsize= (12, 12), dpi= 227, facecolor= 'black')
+plt.imshow(ham_cloud, interpolation= 'bilinear')
+plt.axis('off')
+plt.show()
+
+# %% [markdown]
+# ### 2. Spam Word Cloud (Thumbs-Down Mask + Custom Font)
+#
+# Key terms: font_path, uppercase text, max_font_size
+
+# %%
+# prepare string
+spam_string= ' '.join(list_spam)
+
+# prepare mask
+icon= Image.open(THUMBS_DOWN)
+new_mask= Image.new(mode= "RGB", size= icon.size, color= (255, 255, 255))
+new_mask.paste(icon, box= icon)
+
+# creating the array
+array_down= np.array(new_mask)
+
+# %%
+# generating wordcloud
+spam_cloud= WordCloud(mask= array_down, font_path= FONT_PATH, max_words= 2000,
+                    min_font_size= 6, colormap= 'cool') # try relative scaling
+spam_cloud.generate(spam_string.upper())
+
+# plotting
+plt.figure(figsize= (12, 12), dpi= 227, facecolor= 'black')
+plt.imshow(spam_cloud, interpolation= 'bilinear')
+plt.axis('off')
+plt.show()
+
+# %% [markdown]
+# ### 3. Stemming vs Visualization
+#
+# Key terms: stemming trade-off, model vs visualization
+# - Stemmed words → good for Bayes classifier
+# - Unstemmed words → better for word clouds
+# - If needed: disable stemming only for visualization, not training
+
+# %% [markdown]
+# **Summary**
+#
+# In this lesson, you generated two separate word clouds for ham and spam emails using different masks (thumbs up/down). You converted cleaned word lists into strings, applied image masks, customized color maps, and improved readability using custom fonts and uppercase text. You also saw why stemmed data should be used for modeling, while raw words are better for visualizations. This completes the exploratory visualization phase before moving into vocabulary building for the Naive Bayes classifier.
