@@ -1,5 +1,5 @@
-# Force GitHub to count these files in stats (do not treat as generated)
-*.py linguist-generated=false
-
-# Force GitHub to classify them as Python (prevent Roff misclassification)
+# Force .py files to be counted
 *.py linguist-language=Python
+*.py linguist-generated=false
+*.py linguist-documentation=false
+*.py linguist-vendored=false
