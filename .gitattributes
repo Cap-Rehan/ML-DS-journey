@@ -1,2 +1,5 @@
-*.roff linguist-detectable=false
-*.py   linguist-detectable=true
+# Force .py files to be counted
+*.py linguist-language=Python
+*.py linguist-generated=false
+*.py linguist-documentation=false
+*.py linguist-vendored=false
