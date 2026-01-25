@@ -92,3 +92,6 @@ mlruns/
 # Environment variables
 .env
 .env.local
+
+# Others
+Section-6/chats
