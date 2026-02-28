@@ -41,6 +41,7 @@ ENV/
 *.hdf5
 *.pkl
 *.pickle
+*.txt
 
 # Model files
 *.model

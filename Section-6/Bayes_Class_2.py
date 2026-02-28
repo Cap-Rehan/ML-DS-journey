@@ -89,11 +89,7 @@ data = pd.concat([spam_emails, ham_emails])
 
 # %%
 data.drop('cmds', inplace=True)
-
-# %%
 data['MAIL_ID'] = range(1, 5797)
-
-# %%
 data['FILE_NAME'] = data.index
 data.set_index('MAIL_ID', inplace=True)
 
@@ -186,7 +182,7 @@ vocab.head()
 # %%
 WORD_ID_FILE = 'word-by-ids.csv'
 
-vocab.to_csv(WORD_ID_FILE, index_label=vocab.index.name, header= vocab.VOCAB_WORD.name)
+# vocab.to_csv(WORD_ID_FILE, index_label=vocab.index.name, header= vocab.VOCAB_WORD.name)
 
 # %% [markdown]
 # **Summary**
@@ -280,18 +276,18 @@ def make_sparse_matrix(dframe, indexed_words, labels):
 # Key terms: runtime cost, vocabulary size impact
 
 # %%
-# import time
+import time
 
-# start = time.perf_counter()
+start = time.perf_counter()
 
-# sparse_train_dframe = make_sparse_matrix(X_train, word_index, y_train)
+sparse_train_dframe = make_sparse_matrix(X_train, word_index, y_train)
 
-# end = time.perf_counter()
-# print(f"Time taken: {end - start:.6f} seconds")
+end = time.perf_counter()
+print(f"Time taken: {end - start:.6f} seconds")
 
 # %%
-# print(sparse_train_dframe.shape)
-# sparse_train_dframe.head()
+print(sparse_train_dframe.shape)
+sparse_train_dframe.head()
 
 # %% [markdown]
 # **Summary**
@@ -304,10 +300,10 @@ def make_sparse_matrix(dframe, indexed_words, labels):
 # Key terms: groupby, sum, aggregation
 
 # %%
-# train_grouped = sparse_train_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY', 'OCCURENCE']).sum().reset_index()
+train_grouped = sparse_train_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY', 'OCCURENCE']).sum().reset_index()
 
-# print(train_grouped.shape)
-# train_grouped.head()
+print(train_grouped.shape)
+train_grouped.head()
 
 # %% [markdown]
 # ### 2. Save Training Sparse Matrix (.txt)
@@ -315,7 +311,7 @@ def make_sparse_matrix(dframe, indexed_words, labels):
 # Key terms: np.savetxt, integer format
 
 # %%
-# TRAINING_DATA_FILE = 'SpamData/02_Training/train-data.txt'
+TRAINING_DATA_FILE = 'SpamData/02_Training/train-data.txt'
 
 # np.savetxt(TRAINING_DATA_FILE, train_grouped, fmt= "%d")
 
@@ -325,22 +321,72 @@ def make_sparse_matrix(dframe, indexed_words, labels):
 # Key terms: reuse function, identical pipeline
 
 # %%
-# sparse_test_dframe = make_sparse_matrix(X_test, word_index, y_test)
-# test_grouped = sparse_test_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY', 'OCCURENCE']).sum().reset_index()
+sparse_test_dframe = make_sparse_matrix(X_test, word_index, y_test)
+test_grouped = sparse_test_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY', 'OCCURENCE']).sum().reset_index()
 
 # %%
 TEST_DATA_FILE = "SpamData/02_Training/test-data.txt"
 # np.savetxt(TEST_DATA_FILE, test_grouped, fmt= "%d")
 
 # %%
-# test_grouped.shape
+test_grouped.shape
 
 # %% [markdown]
 # **Summary**
 #
 # You reduced redundancy in the sparse matrix by grouping identical (DOC_ID, WORD_ID, LABEL) combinations and summing their occurrences. This significantly shrank the dataset while preserving word frequency information. You then exported both training and test sparse matrices as .txt files using NumPy’s savetxt, producing clean numeric datasets ready for Naive Bayes training. At this stage, the data pipeline is complete: raw emails → cleaned tokens → vocabulary mapping → sparse feature matrix → persisted training/test data.
 
-# %% [markdown]
-# ## Pre-processing Subtleties
+# %%
+train_doc_ids = set(train_grouped.DOC_ID)
+test_doc_ids = set(test_grouped.DOC_ID)
 
 # %%
+# unique IDs saved vs Original dataset
+
+print(len(train_doc_ids))
+print(len(test_doc_ids))
+
+print(X_train.shape[0])
+print(X_test.shape[0])
+
+# %% [markdown]
+# ### 2. Which Emails Were Excluded?
+#
+# Key terms: set difference, membership
+
+# %%
+original_train_ids = set(X_train.index)
+missing_train_ids = original_train_ids - train_doc_ids
+
+original_test_ids = set(X_test.index)
+missing_test_ids = original_test_ids - test_doc_ids
+
+# %%
+print(missing_train_ids)
+print(missing_test_ids)
+
+# %%
+print(data.MESSAGE[325])
+print(clean_msg_no_html(data.at[325, "MESSAGE"]))
+
+# %% [markdown]
+# ### 3. Why This Happens
+#
+# Key terms: vocabulary filter, zero-feature document
+#
+# Core filter in sparse builder:
+# -> " _if_ word _in_ word_set: "
+#
+# If:
+# - Email contains no top-2500 vocabulary words
+# - OR cleaning removes all content
+#
+# → No sparse rows created
+# → Email excluded
+#
+# These are effectively zero-feature documents.
+
+# %% [markdown]
+# **Summary**
+#
+# You verified how many emails actually survived the sparse matrix transformation and discovered that some emails were excluded. By comparing document IDs using Python sets, you identified missing emails and traced the cause. Some messages consisted entirely of encrypted blocks or malformed text, while others were dominated by HTML content that was stripped away during preprocessing. Because the sparse matrix only records words from the top 2500 vocabulary, any email with zero valid tokens produced no entries and therefore vanished from the dataset. This highlights an important preprocessing subtlety: aggressive filtering and vocabulary limits can silently remove documents. With preprocessing complete and text fully converted into numerical representations, the dataset is now ready for Naive Bayes training.
