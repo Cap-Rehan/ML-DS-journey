@@ -300,7 +300,7 @@ sparse_train_dframe.head()
 # Key terms: groupby, sum, aggregation
 
 # %%
-train_grouped = sparse_train_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY', 'OCCURENCE']).sum().reset_index()
+train_grouped = sparse_train_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY']).sum().reset_index()
 
 print(train_grouped.shape)
 train_grouped.head()
@@ -313,7 +313,7 @@ train_grouped.head()
 # %%
 TRAINING_DATA_FILE = 'SpamData/02_Training/train-data.txt'
 
-# np.savetxt(TRAINING_DATA_FILE, train_grouped, fmt= "%d")
+np.savetxt(TRAINING_DATA_FILE, train_grouped, fmt= "%d")
 
 # %% [markdown]
 # ### 3. Create & Save Test Sparse Matrix
@@ -322,11 +322,11 @@ TRAINING_DATA_FILE = 'SpamData/02_Training/train-data.txt'
 
 # %%
 sparse_test_dframe = make_sparse_matrix(X_test, word_index, y_test)
-test_grouped = sparse_test_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY', 'OCCURENCE']).sum().reset_index()
+test_grouped = sparse_test_dframe.groupby(['DOC_ID', 'WORD_ID', 'CATEGORY'])['OCCURENCE'].sum().reset_index()
 
 # %%
 TEST_DATA_FILE = "SpamData/02_Training/test-data.txt"
-# np.savetxt(TEST_DATA_FILE, test_grouped, fmt= "%d")
+np.savetxt(TEST_DATA_FILE, test_grouped, fmt= "%d")
 
 # %%
 test_grouped.shape
