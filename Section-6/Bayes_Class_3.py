@@ -208,7 +208,7 @@ print(prob_tokens_ham.sum())
 # ### $ P\left( Token \right) $
 
 # %%
-prob_tokens_all = full_train_features.sum(axis= 0) / total_wc
+prob_tokens_all = (full_train_features.sum(axis= 0) + 1) / (total_wc + VOCAB_SIZE)
 print(prob_tokens_all.sum())
 
 # %% [markdown]
