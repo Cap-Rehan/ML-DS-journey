@@ -110,14 +110,6 @@ joint_log_spam = X_test.dot(prob_spam_token_log) + np.log(prob_spam)
 joint_log_ham = X_test.dot(np.log(prob_ham_token)) + np.log(1 - prob_spam)
 
 # %% [markdown]
-# ## Metrics & Evaluation
-# ### Accuracy
-
-# %%
-correct_docs = (y_test == prediction).sum()
-print("accuracy =", correct_docs / len(y_test))
-
-# %% [markdown]
 # ## Visualizing our Results
 
 # %%
@@ -170,4 +162,51 @@ plt.legend(['NonSpam', 'Spam', 'Decision Boundary'], loc= 'lower right', fontsiz
 
 plt.show()
 
+# %% [markdown]
+# ## Metrics & Evaluation
+# ### Accuracy
+
 # %%
+correct_docs = (y_test == prediction).sum()
+print("accuracy =", correct_docs / len(y_test))
+
+# %% [markdown]
+# ### False Positives & False Negatives
+
+# %%
+np.unique(prediction, return_counts= True)
+
+# %%
+true_pos = (y_test == 1) & (prediction == 1)
+true_neg = (y_test == 0) & (prediction == 0)
+false_pos = (y_test == 0) & (prediction == 1)
+false_neg = (y_test == 1) & (prediction == 0)
+
+# %%
+print("Email was spam and classified as spam:", true_pos.sum())
+print("Email was nonspam and classified as nonspam:", true_neg.sum())
+print("Email was nonspam but classified as spam:", false_pos.sum())
+print("Email was spam but classified as nonspam:", false_neg.sum())
+
+# %% [markdown]
+# ### Recall Score
+
+# %%
+recall_score = true_pos.sum() / (true_pos.sum() + false_neg.sum())
+
+# %%
+print("Recall Score is: {:.2%}".format(recall_score))
+
+# %% [markdown]
+# ### Precision Matrix
+
+# %%
+precision_score = true_pos.sum() / (true_pos.sum() + false_pos.sum())
+print("Precision Score is: {:.2%}".format(precision_score))
+
+# %% [markdown]
+# ### F-Score / F1 Score
+
+# %%
+f1_score = 2 * precision_score * recall_score / (precision_score + recall_score)
+print("F Score is: ", round(f1_score, 3)) 
