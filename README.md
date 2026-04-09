@@ -25,13 +25,45 @@ A collection of Python scripts explaining various machine learning concepts and 
 *   **`Section-4/Grad_Desc_2nd.py`**: Continues with Gradient Descent, introducing Mean Squared Error (MSE) as a cost function for linear regression and exploring RSS vs. MSE.
 
 ### Section 5: Case Study - California Housing
-*   **`Section-5/California_Housing.py`**: A comprehensive machine learning workflow using the California Housing dataset. Covers data exploration, visualization (including `seaborn`), feature engineering, and modeling with `statsmodels` and `scikit-learn`.
-*   **`Section-5/allcorr_plot.pdf`**: A visualization output showing the correlation between features in the California Housing dataset.
+
+*   **`Section-5/California_Housing.py`**: A comprehensive case study that walks through the entire machine learning workflow using the California Housing dataset. It covers data exploration, visualization, feature engineering, and building a linear regression model with `statsmodels` and `scikit-learn`.
+*   **`Section-5/Valuation_tool.py`**: A tool for estimating house prices based on user input. It uses the California Housing dataset and a linear regression model to predict prices based on features like location, number of rooms, and population.
+*   **`Section-5/california_valuation.py`**: The valuation model packed as a module for easy reuse. Import this module in other scripts to use the house price prediction functionality.
+*   **`Section-5/test_val.py`**: A test script to validate the functionality of the `california_valuation` module.
 
 ## Setup
 
-To run these scripts, you need to have Python installed.
-You can install the necessary libraries using pip:
+### Modern Environment (MacBook M4 - 2025)
+
+This project now includes a complete development environment setup:
+
+**Environment:**
+- Python 3.11.10 (via pyenv)
+- Virtual environment (`ml_env/`)
+- Zed editor configuration
+- All modern ML libraries
+
+**Quick Start:**
+```bash
+# Activate virtual environment
+source ml_env/bin/activate
+
+# Test all libraries work
+python test_imports.py
+
+# Open in Zed editor
+zed .
+```
+
+**Libraries included:**
+- pandas, numpy, scikit-learn
+- matplotlib, seaborn, plotly
+- jupyter, jupyterlab
+- statsmodels, black, ruff
+
+### Legacy Setup (for reference)
+
+For basic setup without virtual environment:
 
 ```bash
 pip install pandas matplotlib scikit-learn numpy sympy statsmodels seaborn
