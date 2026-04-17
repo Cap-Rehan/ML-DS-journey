@@ -96,3 +96,9 @@ mlruns/
 
 # Others
 Section-6/side-quests/chats
+Section-7/tensorboard_cifar_logs/
+
+# UV
+uv.lock
+.python-version
+main.py
